@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patients Manager</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="welcome-screen" class="screen bg-image">
+       
+        </style>
+        <div class="welcome-content">
+            <h1>Welcome to Patients Manager</h1>
+            <h3>RISE AND SHINE FOR THE BEST HEALTH LTD.</h3>
+        </div>
+        <div class="button-group">
+            <button id="register-btn">Register patient</button>
+            <button id="view-btn">View patients</button>
+            
+        
+        </div>
+    </div>
+
+    <div id="form-screen" class="screen bg-image" style="display:none;">
+        <style>
+            #form-screen.bg-image {
+                background-image: url('Images/bg_image1.png');
+                background-size: cover;
+                background-position: center;
+                color: #000;
+            }
+        </style>
+        <h2>Patients Form</h2>
+        <form id="patient-form">
+            <label>Name: <input type="text" name="name" required></label><br>
+            <label>Phone Number: <input type="text" name="phone" required></label><br>
+            <label>Date: <input type="date" name="date" id="date-input" required></label><br>
+            <label>Address (District): <input type="text" name="address" required></label><br>
+            <label>Payment Mode:
+                <select name="paymentMode" required>
+                    <option value="CASH">CASH</option>
+                    <option value="MOMO">MOMO</option>
+                </select>
+            </label><br>
+            <label>Amount Paid: <input type="text" name="amount" id="amount-input" value="10000" required></label><br>
+            <label>Distributor Name: <input type="text" name="distributor" required></label><br>
+            <label>Distributor Bonus Payment Status:
+                <select name="bonusStatus" required>
+                    <option value="Paid">Paid</option>
+                    <option value="Not paid">Not paid</option>
+                </select>
+            </label><br>
+            <button type="submit">Submit</button>
+            <button type="button" id="form-back-btn">Back</button>
+        </form>
+    </div>
+
+    <div id="list-screen" class="screen" style="display:none;">
+        <h2>Patients List</h2>
+        <div id="loading-message" style="display:none;">Loading patients...</div>
+        <div id="error-message" style="color:red; display:none;"></div>
+        <div class="table-container" style="overflow-x: auto;">
+            <table id="patients-table" class="data-table">
+                <thead>
+                    <tr>
+                        <th>Serial</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Date</th>
+                        <th>Address</th>
+                        <th>Payment Mode</th>
+                        <th>Amount Paid</th>
+                        <th>Distributor Name</th>
+                        <th>Bonus Payment</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Patients will be rendered here -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Add this container div -->
+    <div class="back-button-container">
+        <button id="list-back-btn" class="action-button">Back</button>
+    </div>
+
+    <footer style="text-align:center; margin-top:40px; color:#555; font-size:14px;">
+        © Rise And Shine For The Best Health Ltd-in BFSUMA Products. All rights reserved 2025.
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Main Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
