@@ -46,6 +46,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorMessage = document.getElementById('error-message');
     
     let editDocId = null;
+    const INACTIVITY_LIMIT_MS = 10 * 60 * 1000; // 10 minutes
+    let inactivityTimer = null;
+    let inactivitySignedOut = false;
 
     function isSignedIn() {
         return !!auth.currentUser;
@@ -100,18 +103,57 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function clearInactivityTimer() {
+        if (inactivityTimer) {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = null;
+        }
+    }
+
+    async function signOutForInactivity() {
+        if (!isSignedIn()) return;
+        inactivitySignedOut = true;
+        try {
+            await auth.signOut();
+        } catch (err) {
+            inactivitySignedOut = false;
+            alert('Could not sign out: ' + (err.message || err));
+        }
+    }
+
+    function resetInactivityTimer() {
+        if (!isSignedIn()) return;
+        clearInactivityTimer();
+        inactivityTimer = setTimeout(signOutForInactivity, INACTIVITY_LIMIT_MS);
+    }
+
+    function setupInactivityTracking() {
+        const activityEvents = ['click', 'keydown', 'touchstart'];
+        activityEvents.forEach(eventName => {
+            document.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+    }
+
+    setupInactivityTracking();
+
     // Auth state: show Login vs Welcome; don't jump to Welcome on token refresh if already in app
     auth.onAuthStateChanged(function(user) {
         const wasSignedIn = !!lastAuthUser;
         lastAuthUser = user || null;
 
         if (!user) {
+            clearInactivityTimer();
             editDocId = null;
             try { form?.reset?.(); } catch {}
             showScreen('login');
+            if (inactivitySignedOut) {
+                setLoginError('Session expired after 10 minutes of inactivity. Please sign in again.');
+                inactivitySignedOut = false;
+            }
             return;
         }
 
+        resetInactivityTimer();
         if (!wasSignedIn) {
             showScreen('welcome');
         }
@@ -140,6 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await auth.signInWithEmailAndPassword(email, password);
                 if (loginPasswordInput) loginPasswordInput.value = '';
                 setLoginError('');
+                inactivitySignedOut = false;
                 // Welcome screen is shown by onAuthStateChanged when user transitions to signed-in
             } catch (err) {
                 setLoginError(formatAuthError(err));
