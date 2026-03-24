@@ -64,7 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Show the requested screen
-        screens[screenName].style.display = 'block';
+        if (screens[screenName]) {
+            screens[screenName].style.display = 'block';
+        }
     }
 
     function setLoginError(message) {
@@ -162,36 +164,36 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Navigation button handlers
-    buttons.register.addEventListener('click', function() {
+    if (buttons.register) buttons.register.addEventListener('click', function() {
         // Set default date to today
         const dateInput = document.getElementById('date-input');
-        dateInput.value = new Date().toISOString().split('T')[0];
+        if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
         
         // Reset form and show form screen
-        form.reset();
+        if (form) form.reset();
         editDocId = null;
         showScreen('form');
     });
 
-    buttons.view.addEventListener('click', function() {
+    if (buttons.view) buttons.view.addEventListener('click', function() {
         renderPatients();
         showScreen('list');
     });
 
-    buttons.formBack.addEventListener('click', function() {
+    if (buttons.formBack) buttons.formBack.addEventListener('click', function() {
         showScreen('welcome');
     });
 
-    buttons.listBack.addEventListener('click', function() {
+    if (buttons.listBack) buttons.listBack.addEventListener('click', function() {
         showScreen('welcome');
     });
 
     // Form submission
-    form.addEventListener('submit', async function(e) {
+    if (form) form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         try {
-            loadingMessage.style.display = 'block';
+            if (loadingMessage) loadingMessage.style.display = 'block';
             
             const formData = new FormData(form);
             const patient = {
@@ -216,19 +218,21 @@ document.addEventListener('DOMContentLoaded', function() {
             form.reset();
             showScreen('welcome');
         } catch (error) {
-            errorMessage.textContent = 'Error: ' + error.message;
-            errorMessage.style.display = 'block';
-            setTimeout(() => errorMessage.style.display = 'none', 5000);
+            if (errorMessage) {
+                errorMessage.textContent = 'Error: ' + error.message;
+                errorMessage.style.display = 'block';
+                setTimeout(() => (errorMessage.style.display = 'none'), 5000);
+            }
         } finally {
-            loadingMessage.style.display = 'none';
+            if (loadingMessage) loadingMessage.style.display = 'none';
         }
     });
 
     // Render patients list
     async function renderPatients() {
         try {
-            loadingMessage.style.display = 'block';
-            patientsTableBody.innerHTML = '';
+            if (loadingMessage) loadingMessage.style.display = 'block';
+            if (patientsTableBody) patientsTableBody.innerHTML = '';
             
             const snapshot = await db.collection('patients').get();
             const patients = [];
@@ -252,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Display patients
+            if (!patientsTableBody) return;
             patientsTableBody.innerHTML = patients.map((patient, index) => `
                 <tr>
                     <td>${index + 1}</td>
@@ -280,40 +285,46 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
         } catch (error) {
-            errorMessage.textContent = 'Failed to load patients: ' + error.message;
-            errorMessage.style.display = 'block';
+            if (errorMessage) {
+                errorMessage.textContent = 'Failed to load patients: ' + error.message;
+                errorMessage.style.display = 'block';
+            }
         } finally {
-            loadingMessage.style.display = 'none';
+            if (loadingMessage) loadingMessage.style.display = 'none';
         }
     }
 
     // Edit patient
     async function editPatient(id) {
         try {
-            loadingMessage.style.display = 'block';
+            if (loadingMessage) loadingMessage.style.display = 'block';
             const doc = await db.collection('patients').doc(id).get();
             
             if (doc.exists) {
                 const patient = doc.data();
                 
                 // Populate form
-                form.name.value = patient.name || '';
-                form.phone.value = patient.phone || '';
-                form.date.value = patient.date ? patient.date.split('T')[0] : '';
-                form.address.value = patient.address || '';
-                form.paymentMode.value = patient.paymentMode || 'CASH';
-                form.amount.value = patient.amountPaid || '10000';
-                form.distributor.value = patient.distributorName || '';
-                form.bonusStatus.value = patient.bonusPayment || 'Not paid';
+                if (form) {
+                    form.name.value = patient.name || '';
+                    form.phone.value = patient.phone || '';
+                    form.date.value = patient.date ? patient.date.split('T')[0] : '';
+                    form.address.value = patient.address || '';
+                    form.paymentMode.value = patient.paymentMode || 'CASH';
+                    form.amount.value = patient.amountPaid || '10000';
+                    form.distributor.value = patient.distributorName || '';
+                    form.bonusStatus.value = patient.bonusPayment || 'Not paid';
+                }
                 
                 editDocId = id;
                 showScreen('form');
             }
         } catch (error) {
-            errorMessage.textContent = 'Error loading patient: ' + error.message;
-            errorMessage.style.display = 'block';
+            if (errorMessage) {
+                errorMessage.textContent = 'Error loading patient: ' + error.message;
+                errorMessage.style.display = 'block';
+            }
         } finally {
-            loadingMessage.style.display = 'none';
+            if (loadingMessage) loadingMessage.style.display = 'none';
         }
     }
 
@@ -321,14 +332,16 @@ document.addEventListener('DOMContentLoaded', function() {
     async function deletePatient(id) {
         if (confirm('Are you sure you want to delete this patient?')) {
             try {
-                loadingMessage.style.display = 'block';
+                if (loadingMessage) loadingMessage.style.display = 'block';
                 await db.collection('patients').doc(id).delete();
                 await renderPatients();
             } catch (error) {
-                errorMessage.textContent = 'Error deleting patient: ' + error.message;
-                errorMessage.style.display = 'block';
+                if (errorMessage) {
+                    errorMessage.textContent = 'Error deleting patient: ' + error.message;
+                    errorMessage.style.display = 'block';
+                }
             } finally {
-                loadingMessage.style.display = 'none';
+                if (loadingMessage) loadingMessage.style.display = 'none';
             }
         }
     }
