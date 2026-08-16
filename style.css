@@ -486,7 +486,8 @@ body {
     color: var(--color-text-light);
 }
 
-.patient-count {
+.patient-count,
+.client-count {
     font-size: 0.85rem;
     color: var(--color-text-muted);
     margin: 0;

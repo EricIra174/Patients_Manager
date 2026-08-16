@@ -39,12 +39,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const logoutButtons = Array.from(document.querySelectorAll('.logout-btn'));
 
     const form = document.getElementById('patient-form');
-    const patientsTableBody = document.querySelector('#patients-table tbody');
+    const patientsTableBody = document.querySelector('#clients-table tbody');
     const loadingMessage = document.getElementById('loading-message');
     const errorMessage = document.getElementById('error-message');
     const emptyState = document.getElementById('empty-state');
-    const patientSearch = document.getElementById('patient-search');
-    const patientCount = document.getElementById('patient-count');
+    const patientSearch = document.getElementById('client-search');
+    const patientCount = document.getElementById('client-count');
 
     const toastContainer = document.getElementById('toast-container');
     const deleteModal = document.getElementById('delete-modal');
