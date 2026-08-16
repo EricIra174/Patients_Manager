@@ -9,31 +9,29 @@ const firebaseConfig = {
     measurementId: "G-XYZDM708WQ"
 };
 
-// Main Application
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    /** Tracks previous user so we don't reset the screen on token refresh while on Form/List. */
     let lastAuthUser = null;
+    let allPatients = [];
+    let pendingDeleteId = null;
 
-    // Get DOM elements
     const screens = {
         login: document.getElementById('login-screen'),
         welcome: document.getElementById('welcome-screen'),
         form: document.getElementById('form-screen'),
         list: document.getElementById('list-screen')
     };
-    
+
     const buttons = {
         register: document.getElementById('register-btn'),
         view: document.getElementById('view-btn'),
         formBack: document.getElementById('form-back-btn'),
         listBack: document.getElementById('list-back-btn')
     };
-    
+
     const loginForm = document.getElementById('login-form');
     const loginEmailInput = document.getElementById('login-email');
     const loginPasswordInput = document.getElementById('login-password');
@@ -44,32 +42,95 @@ document.addEventListener('DOMContentLoaded', function() {
     const patientsTableBody = document.querySelector('#patients-table tbody');
     const loadingMessage = document.getElementById('loading-message');
     const errorMessage = document.getElementById('error-message');
-    
+    const emptyState = document.getElementById('empty-state');
+    const patientSearch = document.getElementById('patient-search');
+    const patientCount = document.getElementById('patient-count');
+
+    const toastContainer = document.getElementById('toast-container');
+    const deleteModal = document.getElementById('delete-modal');
+    const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+    const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+
     let editDocId = null;
-    const INACTIVITY_LIMIT_MS = 10 * 60 * 1000; // 10 minutes
+    const INACTIVITY_LIMIT_MS = 10 * 60 * 1000;
     let inactivityTimer = null;
     let inactivitySignedOut = false;
+
+    // ── Toast notifications ──
+    function showToast(message, type = 'success') {
+        if (!toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            toast.style.transition = '0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+
+    // ── Delete modal ──
+    function openDeleteModal(id) {
+        pendingDeleteId = id;
+        if (deleteModal) deleteModal.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        pendingDeleteId = null;
+        if (deleteModal) deleteModal.style.display = 'none';
+    }
+
+    if (deleteCancelBtn) {
+        deleteCancelBtn.addEventListener('click', closeDeleteModal);
+    }
+
+    if (deleteModal) {
+        deleteModal.addEventListener('click', function(e) {
+            if (e.target === deleteModal) closeDeleteModal();
+        });
+    }
+
+    if (deleteConfirmBtn) {
+        deleteConfirmBtn.addEventListener('click', async function() {
+            if (!pendingDeleteId) return;
+            const id = pendingDeleteId;
+            closeDeleteModal();
+            try {
+                if (loadingMessage) loadingMessage.style.display = 'flex';
+                await db.collection('patients').doc(id).delete();
+                showToast('Patient deleted successfully.');
+                await renderPatients();
+            } catch (error) {
+                showToast('Error deleting patient: ' + error.message, 'error');
+            } finally {
+                if (loadingMessage) loadingMessage.style.display = 'none';
+            }
+        });
+    }
 
     function isSignedIn() {
         return !!auth.currentUser;
     }
 
-    // Screen management
     function showScreen(screenName) {
         if (!isSignedIn() && screenName !== 'login') {
             screenName = 'login';
         }
 
-        // Hide all screens first
         Object.values(screens).forEach(screen => {
             if (!screen) return;
             screen.style.display = 'none';
         });
-        
-        // Show the requested screen
+
         if (screens[screenName]) {
-            screens[screenName].style.display = 'block';
+            screens[screenName].style.display = screenName === 'login' || screenName === 'welcome'
+                ? 'flex'
+                : 'block';
         }
+
+        document.body.classList.toggle('auth-view', screenName === 'login' || screenName === 'welcome');
     }
 
     function setLoginError(message) {
@@ -80,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         loginError.textContent = message;
-        loginError.style.display = 'block';
+        loginError.style.display = 'flex';
     }
 
     function formatAuthError(err) {
@@ -117,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await auth.signOut();
         } catch (err) {
             inactivitySignedOut = false;
-            alert('Could not sign out: ' + (err.message || err));
+            showToast('Could not sign out: ' + (err.message || err), 'error');
         }
     }
 
@@ -128,15 +189,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupInactivityTracking() {
-        const activityEvents = ['click', 'keydown', 'touchstart'];
-        activityEvents.forEach(eventName => {
+        ['click', 'keydown', 'touchstart'].forEach(eventName => {
             document.addEventListener(eventName, resetInactivityTimer, { passive: true });
         });
     }
 
     setupInactivityTracking();
 
-    // Auth state: show Login vs Welcome; don't jump to Welcome on token refresh if already in app
     auth.onAuthStateChanged(function(user) {
         const wasSignedIn = !!lastAuthUser;
         lastAuthUser = user || null;
@@ -159,7 +218,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Login handlers
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -183,7 +241,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (loginPasswordInput) loginPasswordInput.value = '';
                 setLoginError('');
                 inactivitySignedOut = false;
-                // Welcome screen is shown by onAuthStateChanged when user transitions to signed-in
             } catch (err) {
                 setLoginError(formatAuthError(err));
             } finally {
@@ -195,30 +252,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Logout handlers
     logoutButtons.forEach(btn => {
         btn.addEventListener('click', async function() {
             try {
                 await auth.signOut();
             } catch (err) {
-                alert('Could not sign out: ' + (err.message || err));
+                showToast('Could not sign out: ' + (err.message || err), 'error');
             }
         });
     });
 
-    // Navigation button handlers
     if (buttons.register) buttons.register.addEventListener('click', function() {
-        // Set default date to today
         const dateInput = document.getElementById('date-input');
         if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-        
-        // Reset form and show form screen
         if (form) form.reset();
         editDocId = null;
         showScreen('form');
     });
 
     if (buttons.view) buttons.view.addEventListener('click', function() {
+        if (patientSearch) patientSearch.value = '';
         renderPatients();
         showScreen('list');
     });
@@ -231,13 +284,18 @@ document.addEventListener('DOMContentLoaded', function() {
         showScreen('welcome');
     });
 
-    // Form submission
+    if (patientSearch) {
+        patientSearch.addEventListener('input', function() {
+            displayPatients(filterPatients(this.value));
+        });
+    }
+
     if (form) form.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         try {
-            if (loadingMessage) loadingMessage.style.display = 'block';
-            
+            if (loadingMessage) loadingMessage.style.display = 'flex';
+
             const formData = new FormData(form);
             const patient = {
                 name: formData.get('name'),
@@ -245,108 +303,132 @@ document.addEventListener('DOMContentLoaded', function() {
                 date: formData.get('date'),
                 address: formData.get('address'),
                 paymentMode: formData.get('paymentMode'),
-                amountPaid: formData.get('amount'), // Keep as string
+                amountPaid: formData.get('amount'),
                 distributorName: formData.get('distributor'),
                 bonusPayment: formData.get('bonusStatus')
             };
 
             if (editDocId) {
                 await db.collection('patients').doc(editDocId).update(patient);
-                alert('Patient updated successfully!');
+                showToast('Patient updated successfully!');
             } else {
                 await db.collection('patients').add(patient);
-                alert('Patient registered successfully!');
+                showToast('Patient registered successfully!');
             }
-            
+
             form.reset();
+            editDocId = null;
             showScreen('welcome');
         } catch (error) {
-            if (errorMessage) {
-                errorMessage.textContent = 'Error: ' + error.message;
-                errorMessage.style.display = 'block';
-                setTimeout(() => (errorMessage.style.display = 'none'), 5000);
-            }
+            showToast('Error: ' + error.message, 'error');
         } finally {
             if (loadingMessage) loadingMessage.style.display = 'none';
         }
     });
 
-    // Render patients list
+    function filterPatients(query) {
+        const q = (query || '').trim().toLowerCase();
+        if (!q) return allPatients;
+        return allPatients.filter(p =>
+            (p.name || '').toLowerCase().includes(q) ||
+            (p.phone || '').toLowerCase().includes(q) ||
+            (p.address || '').toLowerCase().includes(q) ||
+            (p.distributorName || '').toLowerCase().includes(q)
+        );
+    }
+
+    function bonusBadge(status) {
+        const isPaid = (status || '').toLowerCase() === 'paid';
+        const cls = isPaid ? 'badge-paid' : 'badge-unpaid';
+        return `<span class="badge ${cls}">${status || 'N/A'}</span>`;
+    }
+
+    function displayPatients(patients) {
+        if (!patientsTableBody) return;
+
+        if (patientCount) {
+            patientCount.textContent = patients.length === allPatients.length
+                ? `${patients.length} patient${patients.length !== 1 ? 's' : ''}`
+                : `${patients.length} of ${allPatients.length} patients`;
+        }
+
+        if (patients.length === 0) {
+            patientsTableBody.innerHTML = '';
+            if (emptyState) emptyState.style.display = 'block';
+            return;
+        }
+
+        if (emptyState) emptyState.style.display = 'none';
+
+        patientsTableBody.innerHTML = patients.map((patient, index) => `
+            <tr>
+                <td data-label="#">${index + 1}</td>
+                <td data-label="Name">${patient.name || 'N/A'}</td>
+                <td data-label="Phone">${patient.phone || 'N/A'}</td>
+                <td data-label="Date">${formatDate(patient.date)}</td>
+                <td data-label="Address">${formatAddress(patient.address)}</td>
+                <td data-label="Payment">${patient.paymentMode || 'N/A'}</td>
+                <td data-label="Amount">${formatAmount(patient.amountPaid)}</td>
+                <td data-label="Distributor">${patient.distributorName || 'N/A'}</td>
+                <td data-label="Bonus">${bonusBadge(patient.bonusPayment)}</td>
+                <td data-label="Actions" class="actions-cell">
+                    <button class="action-btn edit-btn" data-id="${patient.id}">Edit</button>
+                    <button class="action-btn delete-btn" data-id="${patient.id}">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => editPatient(btn.dataset.id));
+        });
+
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => openDeleteModal(btn.dataset.id));
+        });
+    }
+
     async function renderPatients() {
         try {
-            if (loadingMessage) loadingMessage.style.display = 'block';
+            if (loadingMessage) loadingMessage.style.display = 'flex';
+            if (errorMessage) errorMessage.style.display = 'none';
             if (patientsTableBody) patientsTableBody.innerHTML = '';
-            
+
             const snapshot = await db.collection('patients').get();
-            const patients = [];
-            
+            allPatients = [];
+
             snapshot.forEach(doc => {
-                patients.push({
-                    id: doc.id,
-                    ...doc.data()
-                });
+                allPatients.push({ id: doc.id, ...doc.data() });
             });
-            
-            // Sort by date (oldest first, invalid dates at bottom)
-            patients.sort((a, b) => {
+
+            allPatients.sort((a, b) => {
                 const dateA = new Date(a.date);
                 const dateB = new Date(b.date);
-                
                 if (isNaN(dateA.getTime())) return 1;
                 if (isNaN(dateB.getTime())) return -1;
-                
                 return dateA - dateB;
             });
-            
-            // Display patients
-            if (!patientsTableBody) return;
-            patientsTableBody.innerHTML = patients.map((patient, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${patient.name || 'N/A'}</td>
-                    <td>${patient.phone || 'N/A'}</td>
-                    <td>${formatDate(patient.date)}</td>
-                    <td>${formatAddress(patient.address)}</td>
-                    <td>${patient.paymentMode || 'N/A'}</td>
-                    <td>${formatAmount(patient.amountPaid)}</td>
-                    <td>${patient.distributorName || 'N/A'}</td>
-                    <td>${patient.bonusPayment || 'N/A'}</td>
-                    <td>
-                        <button class="action-btn edit-btn" data-id="${patient.id}">Edit</button>
-                        <button class="action-btn delete-btn" data-id="${patient.id}">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-            
-            // Add event listeners for edit/delete buttons
-            document.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', () => editPatient(btn.dataset.id));
-            });
-            
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', () => deletePatient(btn.dataset.id));
-            });
-            
+
+            const query = patientSearch ? patientSearch.value : '';
+            displayPatients(filterPatients(query));
+
         } catch (error) {
             if (errorMessage) {
                 errorMessage.textContent = 'Failed to load patients: ' + error.message;
-                errorMessage.style.display = 'block';
+                errorMessage.style.display = 'flex';
             }
         } finally {
             if (loadingMessage) loadingMessage.style.display = 'none';
         }
     }
 
-    // Edit patient
     async function editPatient(id) {
         try {
-            if (loadingMessage) loadingMessage.style.display = 'block';
+            if (loadingMessage) loadingMessage.style.display = 'flex';
             const doc = await db.collection('patients').doc(id).get();
-            
+
             if (doc.exists) {
                 const patient = doc.data();
-                
-                // Populate form
+
                 if (form) {
                     form.name.value = patient.name || '';
                     form.phone.value = patient.phone || '';
@@ -357,43 +439,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     form.distributor.value = patient.distributorName || '';
                     form.bonusStatus.value = patient.bonusPayment || 'Not paid';
                 }
-                
+
                 editDocId = id;
                 showScreen('form');
             }
         } catch (error) {
-            if (errorMessage) {
-                errorMessage.textContent = 'Error loading patient: ' + error.message;
-                errorMessage.style.display = 'block';
-            }
+            showToast('Error loading patient: ' + error.message, 'error');
         } finally {
             if (loadingMessage) loadingMessage.style.display = 'none';
         }
     }
 
-    // Delete patient
-    async function deletePatient(id) {
-        if (confirm('Are you sure you want to delete this patient?')) {
-            try {
-                if (loadingMessage) loadingMessage.style.display = 'block';
-                await db.collection('patients').doc(id).delete();
-                await renderPatients();
-            } catch (error) {
-                if (errorMessage) {
-                    errorMessage.textContent = 'Error deleting patient: ' + error.message;
-                    errorMessage.style.display = 'block';
-                }
-            } finally {
-                if (loadingMessage) loadingMessage.style.display = 'none';
-            }
-        }
-    }
-
-    // Helper functions
     function formatDate(dateString) {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
-        return isNaN(date.getTime()) ? 'Invalid Date' : 
+        return isNaN(date.getTime()) ? 'Invalid Date' :
             `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
     }
 
@@ -404,7 +464,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function formatAmount(amount) {
         if (!amount) return 'N/A';
-        // If amount is a number, format as RWF currency
         if (!isNaN(amount)) {
             return new Intl.NumberFormat('en-RW', {
                 style: 'currency',
@@ -412,7 +471,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 minimumFractionDigits: 0
             }).format(amount);
         }
-        // Otherwise return as-is (string)
         return amount;
     }
 });

@@ -4,121 +4,202 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patients Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="login-screen" class="screen bg-image">
-        <div class="login-card">
-            <h2>Login</h2>
-            <p class="login-subtitle">Sign in first to continue.</p>
-            <form id="login-form" autocomplete="off">
-                <label>Email
-                    <input type="email" id="login-email" name="email" required autocomplete="username">
-                </label>
-                <label>Password
-                    <input type="password" id="login-password" name="password" required>
-                </label>
-                <div id="login-error" class="login-error" style="display:none;"></div>
-                <button type="submit" id="login-submit-btn">Sign in</button>
-            </form>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Delete confirmation modal -->
+    <div id="delete-modal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+        <div class="modal-card">
+            <h3 id="delete-modal-title">Delete client?</h3>
+            <p>This action cannot be undone. The client record will be permanently removed.</p>
+            <div class="modal-actions">
+                <button type="button" id="delete-cancel-btn" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="delete-confirm-btn" class="btn btn-danger">Delete</button>
+            </div>
         </div>
     </div>
 
-    <div id="welcome-screen" class="screen bg-image" style="display:none;">
-       
-        <div class="welcome-content">
-            <h1>Welcome to Patients Manager</h1>
-            <h3>RISE AND SHINE FOR THE BEST HEALTH LTD.</h3>
-        </div>
-        <div class="button-group">
-            <button id="register-btn">Register patient</button>
-            <button id="view-btn">View patients</button>
-            <button type="button" class="logout-btn" aria-label="Logout">Logout</button>
-            
-        
+    <!-- Login -->
+    <div id="login-screen" class="screen screen-auth">
+        <div class="auth-wrapper">
+            <div class="brand-badge">
+                <span class="brand-icon" aria-hidden="true">+</span>
+                <div>
+                    <p class="brand-name">Clients Manager</p>
+                    <p class="brand-tagline">RISE AND SHINE FOR THE BEST HEALTH LTD.</p>
+                </div>
+            </div>
+            <div class="login-card card">
+                <h2>Welcome back</h2>
+                <p class="login-subtitle">Sign in to manage client records.</p>
+                <form id="login-form" autocomplete="off">
+                    <div class="form-field">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" name="email" required autocomplete="username" placeholder="you@example.com">
+                    </div>
+                    <div class="form-field">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" name="password" required placeholder="Enter your password">
+                    </div>
+                    <div id="login-error" class="alert alert-error" style="display:none;"></div>
+                    <button type="submit" id="login-submit-btn" class="btn btn-primary btn-block">Sign in</button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div id="form-screen" class="screen bg-image" style="display:none;">
-        <style>
-            #form-screen.bg-image {
-                background-image: url('Images/bg_image1.png');
-                background-size: cover;
-                background-position: center;
-                color: #000;
-            }
-        </style>
-        <h2>Patients Form</h2>
-        <div class="top-actions">
-            <button type="button" class="logout-btn">Logout</button>
+    <!-- Welcome -->
+    <div id="welcome-screen" class="screen screen-auth" style="display:none;">
+        <div class="auth-wrapper welcome-wrapper">
+            <div class="welcome-hero">
+                <div class="brand-badge brand-badge-light">
+                    <span class="brand-icon" aria-hidden="true">+</span>
+                    <div>
+                        <p class="brand-name">Clients Manager</p>
+                        <p class="brand-tagline">RISE AND SHINE FOR THE BEST HEALTH LTD.</p>
+                    </div>
+                </div>
+                <h1>Manage your clients</h1>
+                <p class="welcome-desc">Register new clients, track payments, and view your full records in one place.</p>
+            </div>
+            <div class="welcome-actions card">
+                <button id="register-btn" class="btn btn-primary btn-lg">
+                    <span class="btn-icon" aria-hidden="true">+</span>
+                    Register client             
+                </button>
+                <button id="view-btn" class="btn btn-secondary btn-lg">
+                    <span class="btn-icon" aria-hidden="true">≡</span>
+                    View patients
+                </button>
+                <button type="button" class="logout-btn btn btn-ghost btn-lg">Logout</button>
+            </div>
         </div>
-        <form id="patient-form">
-            <label>Name: <input type="text" name="name" required></label><br>
-            <label>Phone Number: <input type="text" name="phone" required></label><br>
-            <label>Date: <input type="date" name="date" id="date-input" required></label><br>
-            <label>Address (District): <input type="text" name="address" required></label><br>
-            <label>Payment Mode:
-                <select name="paymentMode" required>
-                    <option value="CASH">CASH</option>
-                    <option value="MOMO">MOMO</option>
-                </select>
-            </label><br>
-            <label>Amount Paid: <input type="text" name="amount" id="amount-input" value="10000" required></label><br>
-            <label>Distributor Name: <input type="text" name="distributor" required></label><br>
-            <label>Distributor Bonus Payment Status:
-                <select name="bonusStatus" required>
-                    <option value="Paid">Paid</option>
-                    <option value="Not paid">Not paid</option>
-                </select>
-            </label><br>
-            <button type="submit">Submit</button>
-            <button type="button" id="form-back-btn">Back</button>
+    </div>
+
+    <!-- Patient Form -->
+    <div id="form-screen" class="screen screen-app" style="display:none;">
+        <header class="screen-header">
+            <div>
+                <p class="screen-eyebrow">Client registration</p>
+                <h2>Clients Form</h2>
+            </div>
+            <button type="button" class="logout-btn btn btn-danger-outline">Logout</button>
+        </header>
+
+        <form id="patient-form" class="card form-card">
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="field-name">Full name</label>
+                    <input type="text" id="field-name" name="name" required placeholder="Client full name">
+                </div>
+                <div class="form-field">
+                    <label for="field-phone">Phone number</label>
+                    <input type="tel" id="field-phone" name="phone" required placeholder="078X XXX XXX">
+                </div>
+                <div class="form-field">
+                    <label for="date-input">Date</label>
+                    <input type="date" name="date" id="date-input" required>
+                </div>
+                <div class="form-field">
+                    <label for="field-address">Address (District)</label>
+                    <input type="text" id="field-address" name="address" required placeholder="District name">
+                </div>
+                <div class="form-field">
+                    <label for="field-payment">Payment mode</label>
+                    <select id="field-payment" name="paymentMode" required>
+                        <option value="CASH">CASH</option>
+                        <option value="MOMO">MOMO</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="amount-input">Amount paid (RWF)</label>
+                    <input type="text" name="amount" id="amount-input" value="10000" required>
+                </div>
+                <div class="form-field form-field-full">
+                    <label for="field-distributor">Distributor name</label>
+                    <input type="text" id="field-distributor" name="distributor" required placeholder="Distributor full name">
+                </div>
+                <div class="form-field form-field-full">
+                    <label for="field-bonus">Distributor bonus payment status</label>
+                    <select id="field-bonus" name="bonusStatus" required>
+                        <option value="Paid">Paid</option>
+                        <option value="Not paid">Not paid</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <button type="button" id="form-back-btn" class="btn btn-secondary">Back</button>
+            </div>
         </form>
     </div>
 
-    <div id="list-screen" class="screen" style="display:none;">
-        <h2>Patients List</h2>
-        <div class="top-actions">
-            <button type="button" class="logout-btn">Logout</button>
+    <!-- Patients List -->
+    <div id="list-screen" class="screen screen-app" style="display:none;">
+        <header class="screen-header">
+            <div>
+                <p class="screen-eyebrow">Records</p>
+                <h2>Clients List</h2>
+            </div>
+            <button type="button" class="logout-btn btn btn-danger-outline">Logout</button>
+        </header>
+
+        <div class="list-toolbar card">
+            <div class="search-box">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <input type="search" id="client-search" placeholder="Search by name, phone, or district…" aria-label="Search clients">
+            </div>
+            <p id="client-count" class="client-count"></p>
         </div>
-        <div id="loading-message" style="display:none;">Loading patients...</div>
-        <div id="error-message" style="color:red; display:none;"></div>
-        <div class="table-container" style="overflow-x: auto;">
-            <table id="patients-table" class="data-table">
+
+        <div id="loading-message" class="alert alert-info" style="display:none;">
+            <span class="spinner" aria-hidden="true"></span>
+            Loading clients…
+        </div>
+        <div id="error-message" class="alert alert-error" style="display:none;"></div>
+
+        <div class="table-container card">
+            <table id="clients-table" class="data-table">
                 <thead>
                     <tr>
-                        <th>Number</th>
+                        <th>#</th>
                         <th>Names</th>
                         <th>Phone</th>
                         <th>Date</th>
                         <th>Address</th>
-                        <th>Payment Mode</th>
-                        <th>Amount Paid</th>
-                        <th>Distributor Names</th>
-                        <th>Distrib.Bonus Payment status</th>
+                        <th>Payment</th>
+                        <th>Amount</th>
+                        <th>Distributor</th>
+                        <th>Bonus</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Patients will be rendered here -->
-                </tbody>
+                <tbody></tbody>
             </table>
+            <div id="empty-state" class="empty-state" style="display:none;">
+                <p>No clients  found.</p>
+            </div>
         </div>
-        <!-- Add this container div -->
-    <div class="back-button-container">
-        <button id="list-back-btn" class="action-button">Back</button>
+
+        <div class="back-button-container">
+            <button id="list-back-btn" class="btn btn-secondary">Back to home</button>
+        </div>
     </div>
 
-    <footer style="text-align:center; margin-top:40px; color:#555; font-size:14px;">
-        © Rise And Shine For The Best Health Ltd-in BFSUMA Products. All rights reserved 2025.
+    <footer class="app-footer">
+        © Rise And Shine For The Best Health Ltd — BFSUMA Products. All rights reserved 2025.
     </footer>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    
-    <!-- Main Application Script -->
     <script src="app.js"></script>
 </body>
 </html>
